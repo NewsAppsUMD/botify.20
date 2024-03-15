@@ -13,3 +13,12 @@ PROCESS:
 9. I want the genres to display in the csv as well, but I'm having trouble. Right now, it may be because those aren't pieces of data I can pull yet from the API, but I will work on this.
 10. I think after this, what I mainly want to focus on now is connecting it to my slackbot and creating message notifications with releases for that day.
 11. Right now, it only pulls data for all album releases, but I want to figure out how to cater it to users, or only have it show specific artists based on parameters established by the user. 
+12. I tried pushing and committing to main in my old repository, but I got the following error:
+ ! [rejected]        main -> main (non-fast-forward)
+error: failed to push some refs to 'https://github.com/NewsAppsUMD/botify-bot'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+
+Maybe this has to do with the workflow I created to add updates? I will ask for help after break. 
