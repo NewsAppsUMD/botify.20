@@ -1,8 +1,10 @@
 import csv
 import spotipy
+import os
 from spotipy.oauth2 import SpotifyClientCredentials
 from datetime import datetime
-import os
+from slack import WebClient
+from slack.errors import SlackApiError
 
 # Replace 'YOUR_CLIENT_ID' and 'YOUR_CLIENT_SECRET' with your actual client ID and client secret
 client_credentials_manager = SpotifyClientCredentials(client_id='42b50ac3373843b0a7e2e3ab518b9078', client_secret='d01793378c824676bd7e8db63b3907f3')
@@ -51,3 +53,27 @@ with open('releases.csv', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         print(row['Album'], row['Artists'], row['Release Date'], row['Genres'])
+
+# slack message construction
+
+slack_token = os.environ.get('SLACK_API_TOKEN')
+
+message = "New releases for today:\n"
+for album in new_releases['albums']['items']:
+    if album['release_date'] == today:
+        artists = ', '.join([artist['name'] for artist in album['artists']])
+        message += f"- {album['name']} by {artists}\n"
+
+client = WebClient(token=slack_token)
+try:
+    response = client.chat_postMessage(
+        channel="slack-bots",
+        text=message,
+        unfurl_links=True, 
+        unfurl_media=True
+    )
+    print("success!")
+except SlackApiError as e:
+    assert e.response["ok"] is False
+    assert e.response["error"]
+    print(f"Got an error: {e.response['error']}")
