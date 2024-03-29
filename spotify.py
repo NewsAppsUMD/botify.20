@@ -21,6 +21,13 @@ except Exception as e:
 # Filter new releases for today
 todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date'], ', '.join(album.get('genres', []))) for album in new_releases['albums']['items'] if album['release_date'] == today]
 
+header_row = ['Album', 'Artists', 'Release Date', 'Genres']
+
+with open('releases.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(header_row)  # Write header row
+    writer.writerows(todays_releases)  # Write new releases
+
 # Read existing data from releases.csv
 existing_data = set()
 if os.path.exists('releases.csv'):
@@ -39,3 +46,8 @@ if new_releases_to_add:
         writer = csv.writer(csvfile)
         for release in new_releases_to_add:
             writer.writerow(release)
+
+with open('releases.csv', newline='') as csvfile:
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        print(row['Album'], row['Artists'], row['Release Date'], row['Genres'])
