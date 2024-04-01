@@ -15,7 +15,7 @@ today = datetime.now().strftime('%Y-%m-%d')
 
 # Get new releases
 try:
-    new_releases = sp.new_releases(country='US', limit=50)  # You can specify a different country code if needed
+    new_releases = sp.new_releases(country='US', limit=50) 
 except Exception as e:
     print("Error occurred while fetching new releases:", e)
     exit()
@@ -25,19 +25,22 @@ todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album
 
 header_row = ['Album', 'Artists', 'Release Date', 'Genres']
 
-with open('releases.csv', 'w', newline='') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(header_row)  # Write header row
-    writer.writerows(todays_releases)  # Write new releases
+# Check if releases.csv exists
+if not os.path.exists('releases.csv'):
+    # Create the file and write the header row
+    with open('releases.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(header_row)
 
 # Read existing data from releases.csv
 existing_data = set()
-if os.path.exists('releases.csv'):
-    with open('releases.csv', 'r', newline='') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)  # Skip header row
-        for row in reader:
-            existing_data.add((row[0], row[1], row[2], row[3]))
+with open('releases.csv', 'r', newline='') as csvfile:
+    reader = csv.reader(csvfile)
+    next(reader)  # Skip header row
+    for row in reader:
+        existing_data.add((row[0], row[1], row[2], row[3]))
+
+print("Today's date:", today)
 
 # Filter out releases already in the CSV
 new_releases_to_add = [release for release in todays_releases if release not in existing_data]
@@ -49,31 +52,44 @@ if new_releases_to_add:
         for release in new_releases_to_add:
             writer.writerow(release)
 
+# Print the contents of the CSV file
 with open('releases.csv', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         print(row['Album'], row['Artists'], row['Release Date'], row['Genres'])
 
-# slack message construction
-
-slack_token = os.environ.get('SLACK_API_TOKEN')
-
-message = "New releases for today:\n"
+# Insert new releases into the database
 for album in new_releases['albums']['items']:
     if album['release_date'] == today:
         artists = ', '.join([artist['name'] for artist in album['artists']])
-        message += f"- {album['name']} by {artists}\n"
+        print(f"Inserting: {album['name']}, {artists}, {album['release_date']}")
+        try:
+            table.insert({'album': album['name'], 'artists': artists, 'release_date': album['release_date']})
+        except Exception as e:
+            print(f"Error inserting release: {e}")
 
-client = WebClient(token=slack_token)
-try:
-    response = client.chat_postMessage(
-        channel="slack-bots",
-        text=message,
-        unfurl_links=True, 
-        unfurl_media=True
-    )
-    print("success!")
-except SlackApiError as e:
-    assert e.response["ok"] is False
-    assert e.response["error"]
-    print(f"Got an error: {e.response['error']}")
+print("New releases inserted into the database")
+
+# slack message construction
+
+# slack_token = os.environ.get('SLACK_API_TOKEN')
+
+# message = "New releases for today:\n"
+# for album in new_releases['albums']['items']:
+#     if album['release_date'] == today:
+#         artists = ', '.join([artist['name'] for artist in album['artists']])
+#         message += f"- {album['name']} by {artists}\n"
+
+# client = WebClient(token=slack_token)
+# try:
+#     response = client.chat_postMessage(
+#         channel="slack-bots",
+#         text=message,
+#         unfurl_links=True, 
+#         unfurl_media=True
+#     )
+#     print("success!")
+# except SlackApiError as e:
+#     assert e.response["ok"] is False
+#     assert e.response["error"]
+#     print(f"Got an error: {e.response['error']}")
