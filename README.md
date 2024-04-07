@@ -26,3 +26,11 @@ Maybe this has to do with the workflow I created to add updates? I will ask for 
 ## MARCH 30 UPDATE
 
 I was able to add header rows to the CSV file and used dictreader to access the data. I also successfully added a workflow to this version of the bot, so we will have to see how that goes. I also managed to connect this all to my slack bot and successfully craft a message for it to send out. Right now, the message just outputs all the releases for the day, so I need to figure out how I want to clean it up a bit more. What comes next is figuring out how to implement users adding preferences for artists and how to access those specific endpoints in the API to notify whenever they are released. I have learned so far that the process is more straight forward than I thought. It's all about breaking down the components, i.e., fetching the Spotify API data, then organizing it, then scheduling the workflow, then calling it to slack, etc. The data I am collecting through this is fairly simplistic so far, so I want to figure out more ways I can expand and analyze it, especially if I want to transform it into a news app.
+
+## APR 1 CLASS UPDATE
+
+Added everything to a sqlite database to help with building a dataset for my news app. It worked, but now the csv shows up empty whenever I run the code.
+
+## APR 6 UPDATE
+
+Updated how data is appended to the csv and then to the sqlite database after that. Unfortunately, the data from Apr 1 was overwritten, so now the data is only from Apr 5 so far. As of tonight, it's hard to tell if the appending new data works because I'm unsure if it's because it isn't working or if it's because there aren't new releases to add. Still working on refining slack message

@@ -1,8 +1,11 @@
 name: Update Releases
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Run every night at midnight UTC
+  push:
+    branches:
+      - '*'
+    schedule:
+      - cron: '0 0 * * *'  # Run every night at midnight UTC
 
 jobs:
   update-releases:
@@ -22,7 +25,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run script
-      run: python script.py
+      run: python spotify.py
       env:
         SPOTIPY_CLIENT_ID: ${{ secrets.SPOTIPY_CLIENT_ID }}
         SPOTIPY_CLIENT_SECRET: ${{ secrets.SPOTIPY_CLIENT_SECRET }}

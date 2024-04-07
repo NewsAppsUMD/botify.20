@@ -1,6 +1,8 @@
 import csv
 import spotipy
 import os
+import sqlite3
+import pandas as pd
 from spotipy.oauth2 import SpotifyClientCredentials
 from datetime import datetime
 from slack import WebClient
@@ -15,30 +17,35 @@ today = datetime.now().strftime('%Y-%m-%d')
 
 # Get new releases
 try:
-    new_releases = sp.new_releases(country='US', limit=50) 
+    new_releases = sp.new_releases(country='US', limit=50)
 except Exception as e:
     print("Error occurred while fetching new releases:", e)
     exit()
 
 # Filter new releases for today
-todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date'], ', '.join(album.get('genres', []))) for album in new_releases['albums']['items'] if album['release_date'] == today]
+todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date']) for album in new_releases['albums']['items'] if album['release_date'] == today]
 
-header_row = ['Album', 'Artists', 'Release Date', 'Genres']
+header_row = ['Album', 'Artists', 'Release Date']
 
 # Check if releases.csv exists
 if not os.path.exists('releases.csv'):
+    print("making the file")
     # Create the file and write the header row
     with open('releases.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(header_row)
-
-# Read existing data from releases.csv
-existing_data = set()
-with open('releases.csv', 'r', newline='') as csvfile:
-    reader = csv.reader(csvfile)
-    next(reader)  # Skip header row
-    for row in reader:
-        existing_data.add((row[0], row[1], row[2], row[3]))
+else:
+    print("opening the file")
+    # Read existing data from releases.csv
+    existing_data = set()
+    with open('releases.csv', 'r', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        # Read the header row
+        existing_header = next(reader)
+        if existing_header != header_row:
+            print("Warning: Header row in the CSV file does not match the expected header.")
+        for row in reader:
+            existing_data.add((row[0], row[1], row[2]))
 
 print("Today's date:", today)
 
@@ -51,45 +58,76 @@ if new_releases_to_add:
         writer = csv.writer(csvfile)
         for release in new_releases_to_add:
             writer.writerow(release)
+else:
+    print("No new releases to add to the CSV file.")
 
 # Print the contents of the CSV file
 with open('releases.csv', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
-        print(row['Album'], row['Artists'], row['Release Date'], row['Genres'])
+        if 'Release Date' == today:
+            print(row['Album'], row['Artists'], row['Release Date'])
 
-# Insert new releases into the database
-for album in new_releases['albums']['items']:
-    if album['release_date'] == today:
-        artists = ', '.join([artist['name'] for artist in album['artists']])
-        print(f"Inserting: {album['name']}, {artists}, {album['release_date']}")
-        try:
-            table.insert({'album': album['name'], 'artists': artists, 'release_date': album['release_date']})
-        except Exception as e:
-            print(f"Error inserting release: {e}")
+# add new data to database
+conn = sqlite3.connect('spotify_releases.db')
+cursor = conn.cursor()
 
-print("New releases inserted into the database")
+def append_csv_to_sqlite(csv_filename, db_filename, table_name):
+    # Read CSV data into a pandas DataFrame
+    df = pd.read_csv(csv_filename)
+
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_filename)
+
+    # Append DataFrame to the SQLite table
+    df.to_sql(table_name, conn, if_exists='append', index=False)
+
+    # Commit changes and close connection
+    conn.commit()
+    conn.close()
+
+csv_filename = 'releases.csv'
+db_filename = 'spotify_releases.db'
+table_name = 'releases'
+
+append_csv_to_sqlite(csv_filename, db_filename, table_name)
 
 # slack message construction
 
-# slack_token = os.environ.get('SLACK_API_TOKEN')
+# Connect to the Datasette database
+conn = sqlite3.connect('releases.db')
+c = conn.cursor()
 
-# message = "New releases for today:\n"
-# for album in new_releases['albums']['items']:
-#     if album['release_date'] == today:
-#         artists = ', '.join([artist['name'] for artist in album['artists']])
-#         message += f"- {album['name']} by {artists}\n"
+# Retrieve today's releases from the database
+today = datetime.now().strftime('%Y-%m-%d')
+c.execute("SELECT name, artists, release_date, genres FROM spotify_releases WHERE release_date = ? LIMIT 5", (today,))
+today_releases = c.fetchall()
 
-# client = WebClient(token=slack_token)
-# try:
-#     response = client.chat_postMessage(
-#         channel="slack-bots",
-#         text=message,
-#         unfurl_links=True, 
-#         unfurl_media=True
-#     )
-#     print("success!")
-# except SlackApiError as e:
-#     assert e.response["ok"] is False
-#     assert e.response["error"]
-#     print(f"Got an error: {e.response['error']}")
+# Construct the Slack message
+slack_token = os.environ.get('SLACK_API_TOKEN')
+message = "Some new releases from today:\n"
+
+for release in today_releases:
+    album_name, artists, release_date = release
+    artists = ', '.join(artists.split(', '))  # Assuming artists is a comma-separated string
+    message += f"- {album_name} by {artists}\n  Genres: {genres}\n"
+
+message += "\nIs there any specific artist you want to know about?"
+
+# Send the Slack message
+client = WebClient(token=slack_token)
+try:
+    response = client.chat_postMessage(
+        channel="slack-bots",
+        text=message,
+        unfurl_links=True,
+        unfurl_media=True
+    )
+    print("Success!")
+except SlackApiError as e:
+    assert e.response["ok"] is False
+    assert e.response["error"]
+    print(f"Got an error: {e.response['error']}")
+
+# Close the database connection
+conn.close()
