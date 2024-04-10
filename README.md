@@ -34,3 +34,6 @@ Added everything to a sqlite database to help with building a dataset for my new
 ## APR 6 UPDATE
 
 Updated how data is appended to the csv and then to the sqlite database after that. Unfortunately, the data from Apr 1 was overwritten, so now the data is only from Apr 5 so far. As of tonight, it's hard to tell if the appending new data works because I'm unsure if it's because it isn't working or if it's because there aren't new releases to add. Still working on refining slack message
+
+## FINAL UPDATE
+

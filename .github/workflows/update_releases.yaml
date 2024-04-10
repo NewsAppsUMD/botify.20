@@ -19,7 +19,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests spotipy.oauth2 datetime slack slack.errors
+        run: pip install requests datetime slack slack.errors
 
       - name: Run script
         run: python spotify.py

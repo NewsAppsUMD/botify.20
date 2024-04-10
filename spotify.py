@@ -101,9 +101,18 @@ append_csv_to_sqlite(csv_filename, db_filename, table_name)
 slack_token = os.environ.get('SLACK_API_TOKEN')
 
 if num_releases_today == 0:
-    message = "Unfortunately, there were no albums released today."
-else:
-    message = f"A total of {num_releases_today} albums were released today.\nSome of them include:\n"
+    message = "Unfortunately, there were no albums released today. Here are some releases you could have missed:\n"
+    # Read the last 5 releases from the CSV file
+    with open('releases.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        releases = list(reader)
+        last_five_releases = releases[-5:]
+
+    if last_five_releases:
+        for release in last_five_releases:
+            message += f"- {release['Album']} by {release['Artists']}, released on {release['Release Date']}\n"
+    else:
+        message = f"A total of {num_releases_today} albums were released today.\nSome of them include:\n"
 
 for release in todays_releases[:5]:
     album_name, artists, release_date = release
