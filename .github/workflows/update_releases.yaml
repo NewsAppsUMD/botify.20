@@ -4,28 +4,36 @@ on:
   push:
     branches:
       - '*'
-    schedule:
-      - cron: '0 0 * * *'  # Run every night at midnight UTC
+  schedule:
+    - cron: "0 23 * * *"
 
 jobs:
-  update-releases:
+  scheduled:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+      - uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: |
-        pip install -r requirements.txt
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
 
-    - name: Run script
-      run: python spotify.py
-      env:
-        SPOTIPY_CLIENT_ID: ${{ secrets.SPOTIPY_CLIENT_ID }}
-        SPOTIPY_CLIENT_SECRET: ${{ secrets.SPOTIPY_CLIENT_SECRET }}
+      - name: Install dependencies
+        run: pip install requests spotipy.oauth2 datetime slack slack.errors
+
+      - name: Run script
+        run: python spotify.py
+        env:
+          SPOTIPY_CLIENT_ID: ${{ secrets.SPOTIPY_CLIENT_ID }}
+          SPOTIPY_CLIENT_SECRET: ${{ secrets.SPOTIPY_CLIENT_SECRET }}
+
+      - name: "Commit and push if it changed"
+        run: |-
+            git config user.name "Automated"
+            git config user.email "actions@users.noreply.github.com"
+            git add -A
+            timestamp=$(date -u)
+            git commit -m "Latest data: ${timestamp}" || exit 0
+            git push
+
+

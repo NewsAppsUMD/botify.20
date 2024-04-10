@@ -49,6 +49,9 @@ else:
 
 print("Today's date:", today)
 
+num_releases_today = len(todays_releases)
+print("Number of releases today:", num_releases_today)
+
 # Filter out releases already in the CSV
 new_releases_to_add = [release for release in todays_releases if release not in existing_data]
 
@@ -94,40 +97,33 @@ append_csv_to_sqlite(csv_filename, db_filename, table_name)
 
 # slack message construction
 
-# Connect to the Datasette database
-conn = sqlite3.connect('releases.db')
-c = conn.cursor()
-
-# Retrieve today's releases from the database
-today = datetime.now().strftime('%Y-%m-%d')
-c.execute("SELECT name, artists, release_date, genres FROM spotify_releases WHERE release_date = ? LIMIT 5", (today,))
-today_releases = c.fetchall()
-
 # Construct the Slack message
 slack_token = os.environ.get('SLACK_API_TOKEN')
-message = "Some new releases from today:\n"
 
-for release in today_releases:
+if num_releases_today == 0:
+    message = "Unfortunately, there were no albums released today."
+else:
+    message = f"A total of {num_releases_today} albums were released today.\nSome of them include:\n"
+
+for release in todays_releases[:5]:
     album_name, artists, release_date = release
     artists = ', '.join(artists.split(', '))  # Assuming artists is a comma-separated string
-    message += f"- {album_name} by {artists}\n  Genres: {genres}\n"
+    message += f"- {album_name} by {artists}\n "
 
 message += "\nIs there any specific artist you want to know about?"
 
-# Send the Slack message
+print(message)
+
 client = WebClient(token=slack_token)
 try:
     response = client.chat_postMessage(
         channel="slack-bots",
         text=message,
-        unfurl_links=True,
+        unfurl_links=True, 
         unfurl_media=True
     )
-    print("Success!")
+    print("success!")
 except SlackApiError as e:
     assert e.response["ok"] is False
     assert e.response["error"]
     print(f"Got an error: {e.response['error']}")
-
-# Close the database connection
-conn.close()
