@@ -23,29 +23,29 @@ except Exception as e:
     exit()
 
 # Filter new releases for today
-todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date']) for album in new_releases['albums']['items'] if album['release_date'] == today]
+todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date'], album['external_urls']['spotify']) for album in new_releases['albums']['items'] if album['release_date'] == today]
 
-header_row = ['Album', 'Artists', 'Release Date']
+header_row = ['Album', 'Artists', 'Release Date', 'External URL']
 
-# Check if releases.csv exists
-if not os.path.exists('releases.csv'):
+# Check if releases-2.csv exists
+if not os.path.exists('releases-2.csv'):
     print("making the file")
     # Create the file and write the header row
-    with open('releases.csv', 'w', newline='') as csvfile:
+    with open('releases-2.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(header_row)
 else:
     print("opening the file")
-    # Read existing data from releases.csv
+    # Read existing data from releases-2.csv
     existing_data = set()
-    with open('releases.csv', 'r', newline='') as csvfile:
+    with open('releases-2.csv', 'r', newline='') as csvfile:
         reader = csv.reader(csvfile)
         # Read the header row
         existing_header = next(reader)
         if existing_header != header_row:
             print("Warning: Header row in the CSV file does not match the expected header.")
         for row in reader:
-            existing_data.add((row[0], row[1], row[2]))
+            existing_data.add((row[0], row[1], row[2], row[3]))
 
 print("Today's date:", today)
 
@@ -57,7 +57,7 @@ new_releases_to_add = [release for release in todays_releases if release not in 
 
 # Append new releases to the CSV file
 if new_releases_to_add:
-    with open('releases.csv', 'a', newline='') as csvfile:
+    with open('releases-2.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
         for release in new_releases_to_add:
             writer.writerow(release)
@@ -65,35 +65,35 @@ else:
     print("No new releases to add to the CSV file.")
 
 # Print the contents of the CSV file
-with open('releases.csv', newline='') as csvfile:
+with open('releases-2.csv', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         if 'Release Date' == today:
-            print(row['Album'], row['Artists'], row['Release Date'])
+            print(row['Album'], row['Artists'], row['Release Date'], row['External URL'])
 
-# add new data to database
-conn = sqlite3.connect('spotify_releases.db')
-cursor = conn.cursor()
+# # add new data to database
+# conn = sqlite3.connect('spotify_releases.db')
+# cursor = conn.cursor()
 
-def append_csv_to_sqlite(csv_filename, db_filename, table_name):
-    # Read CSV data into a pandas DataFrame
-    df = pd.read_csv(csv_filename)
+# def append_csv_to_sqlite(csv_filename, db_filename, table_name):
+#     # Read CSV data into a pandas DataFrame
+#     df = pd.read_csv(csv_filename)
 
-    # Connect to the SQLite database
-    conn = sqlite3.connect(db_filename)
+#     # Connect to the SQLite database
+#     conn = sqlite3.connect(db_filename)
 
-    # Append DataFrame to the SQLite table
-    df.to_sql(table_name, conn, if_exists='append', index=False)
+#     # Append DataFrame to the SQLite table
+#     df.to_sql(table_name, conn, if_exists='append', index=False)
 
-    # Commit changes and close connection
-    conn.commit()
-    conn.close()
+#     # Commit changes and close connection
+#     conn.commit()
+#     conn.close()
 
-csv_filename = 'releases.csv'
-db_filename = 'spotify_releases.db'
-table_name = 'releases'
+# csv_filename = 'releases-2.csv'
+# db_filename = 'spotify_releases.db'
+# table_name = 'releases'
 
-append_csv_to_sqlite(csv_filename, db_filename, table_name)
+# append_csv_to_sqlite(csv_filename, db_filename, table_name)
 
 # slack message construction
 
@@ -103,23 +103,29 @@ slack_token = os.environ.get('SLACK_API_TOKEN')
 if num_releases_today == 0:
     message = "Unfortunately, there were no albums released today. Here are some releases you could have missed:\n"
     # Read the last 5 releases from the CSV file
-    with open('releases.csv', newline='') as csvfile:
+    with open('releases-2.csv', newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         releases = list(reader)
         last_five_releases = releases[-5:]
 
     if last_five_releases:
         for release in last_five_releases:
-            message += f"- {release['Album']} by {release['Artists']}, released on {release['Release Date']}\n"
+            release_date = datetime.strptime(release['Release Date'], '%Y-%m-%d').date()
+            formatted_date = release_date.strftime('%B %d, %Y')
+            message += f"- <{release['External URL']}|{release['Album']}> by {release['Artists']}, released on {formatted_date}\n"
     else:
         message = f"A total of {num_releases_today} albums were released today.\nSome of them include:\n"
 
 for release in todays_releases[:5]:
     album_name, artists, release_date = release
     artists = ', '.join(artists.split(', '))  # Assuming artists is a comma-separated string
-    message += f"- {album_name} by {artists}\n "
+    release_date = datetime.strptime(release_date, '%Y-%m-%d').date()
+    formatted_date = release_date.strftime('%B %d, %Y')
+    message += f"- <{external_url}|{album_name}> by {artists}, released on {formatted_date}\n"
+    if num_releases_today > 5:
+        message += f"Would you like to see all the releases from today?"
 
-message += "\nIs there any specific artist you want to know about?"
+message += "\nIs there a specific artist you want to know about?"
 
 print(message)
 

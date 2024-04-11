@@ -16,7 +16,7 @@ import csv
 from datetime import datetime
 
 # Get releases from April 5, 2024
-target_date = '2024-04-09'
+target_date = '2024-04-05'
 
 # Get new releases
 try:
@@ -26,29 +26,29 @@ except Exception as e:
     exit()
 
 # Filter new releases for April 5, 2024
-todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date']) for album in new_releases['albums']['items'] if album['release_date'] == target_date]
+todays_releases = [(album['name'], ', '.join([artist['name'] for artist in album['artists']]), album['release_date'], album['external_urls']['spotify']) for album in new_releases['albums']['items'] if album['release_date'] == target_date]
 
-header_row = ['Album', 'Artists', 'Release Date']
+header_row = ['Album', 'Artists', 'Release Date', 'External URL']
 
 # Check if releases.csv exists
-if not os.path.exists('test-releases.csv'):
+if not os.path.exists('test-releases-2.csv'):
     print("making the file")
     # Create the file and write the header row
-    with open('test-releases.csv', 'w', newline='') as csvfile:
+    with open('test-releases-2.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(header_row)
 else:
     print("opening the file")
     # Read existing data from releases.csv
     existing_data = set()
-    with open('test-releases.csv', 'r', newline='') as csvfile:
+    with open('test-releases-2.csv', 'r', newline='') as csvfile:
         reader = csv.reader(csvfile)
         # Read the header row
         existing_header = next(reader)
         if existing_header != header_row:
             print("Warning: Header row in the CSV file does not match the expected header.")
         for row in reader:
-            existing_data.add((row[0], row[1], row[2]))
+            existing_data.add((row[0], row[1], row[2], row[3]))
 
 print("Target date:", target_date)
 
@@ -60,7 +60,7 @@ new_releases_to_add = [release for release in todays_releases if release not in 
 
 # Append new releases to the CSV file
 if new_releases_to_add:
-    with open('test-releases.csv', 'a', newline='') as csvfile:
+    with open('test-releases-2.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
         for release in new_releases_to_add:
             writer.writerow(release)
@@ -68,11 +68,11 @@ else:
     print("No new releases to add to the CSV file.")
 
 # Print the contents of the CSV file
-with open('test-releases.csv', newline='') as csvfile:
+with open('test-releases-2.csv', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     for row in reader:
         if row['Release Date'] == target_date:
-            print(row['Album'], row['Artists'], row['Release Date'])
+            print(row['Album'], row['Artists'], row['Release Date'], row['External URL'])
 
 # slack message construction
 
